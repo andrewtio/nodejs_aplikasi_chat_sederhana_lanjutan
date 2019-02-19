@@ -16,14 +16,13 @@
         li{
             padding: 10px;
         }
-        li:nth-child(even){
+        #messages li:nth-child(even){
             background: #333;
             color: white;
         }
-        li:nth-child(odd){
+        #messages li:nth-child(odd){
             background: green;
             color: yellow;
-            
         }
         #text_box{
             float: left;
@@ -44,16 +43,51 @@
             width: 20%;
             height: 33px;
         }
+        .hidden{
+            display: none;
+        }
+
+        /* ===== DAFTAR USER ONLINE ===== */
+        #rightBox{
+            float: left;
+            width: 70%;
+        }
+        #leftBox{
+            float: left;
+            width: 25%;
+        }
 
     </style>
 </head>
 <body>
-    <ul id="messages"></ul>
+    <!-- ====MENAMBAHKAN USER===== -->
+    <!-- Menggunakan jQuery -->
+    <!-- HOME PAGE AKAN MUNCUL PERTAMA KALI DAN AKAN HILANG SETELAH USERNAME DIMASUKKAN-->
+    <div id="homepage">
+        <h1>Selamat datang di chatroom AndrewTio</h1>
+        <input type="text" id="nama_user" placeholder="Ketik Nama Kamu Disini..">
+        <button id="submit_name">Masuk !</button>
+    </div>
 
-    <form>
-        <input type="text" id="nama_user" placeholder="isi nama kamu">
-        <input type="text" id="text_box" placeholder="chat kamu"> <button> Kirim </button>
-    </form>
+    <!-- Menggunakan jQuery -->
+    <!-- CHATROOM AKAN MUNCUL SETELAH MEMASUKAN NAMA DI HOMEPAGE -->
+    <div id="chatroom" class="hidden">
+
+        <!-- ======DAFTAR USER ONLINE======= -->
+        <div id="leftBox">
+            <ul id="messages"></ul>
+        </div>
+
+        <div id="rightBox">
+            <h2>Daftar User Online</h2>
+            <ul id="user_lists"></ul>
+        </div>
+
+        <form>
+            <!-- <input type="text" id="nama_user" placeholder="isi nama kamu"> INI DARI TUTORIAL SEBELUMNYA -->
+            <input type="text" id="text_box" placeholder="chat kamu"> <button> Kirim </button>
+        </form>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -69,13 +103,86 @@
 
             // ketika user selesaii ketik
             $('#text_box').val('');
+
+            // ====== KETIKA USER MENGETIK ======
+            isTyping = false;
+            // agar isTyping kembali menjadi false saat user selesai mengetik/ menekan submit
+
             return false;
         });
+
+        // ====== DAFTAR USER ONLINE=========
+        // mendengarkan addOnlineUsers dari server.js
+        socket.on('addOnlineUsers', function(usernames){
+            $('#user_lists').empty();
+            // Bagian #user_lists akan selalu kosong
+
+            for(var i=0; i<usernames.length; i++){
+                $('#user_lists').append($('<li id="user_' + usernames[i] + '">').text(usernames[i]));
+                // Tanda petik 2 untuk pas mau taro value dari id nya yang kita selipin objeknya tergantung nama usernya
+                // Tanda petik 1 untuk nandain dia string
+            }
+        });
+
+        // Ketika ada user yang disconnect maka akan hilang usernya
+        // Kode ini sudah tidak dibutuhkan lagi karena tugasnya sudah digantikan kode di atasnya.
+        // socket.on('disconnect', function(user){
+        //     $('#user_' + username).remove();
+        // });
 
         // Untuk menampilkan frontend
         socket.on('newMessage', function(msg){
             $('#messages').append($('<li>').text(msg + ' || diketik pada: ' + Date()));
+            
+            // ===== KETIKA USER MENGETIK ======
+            $(".temporary").remove();
         });
+
+
+        // ====MENAMBAHKAN USER=====
+        // Ketika user daftar nama -> user langsung masuk chatroom
+        $('#submit_name').click(function(){
+            // Memvalidasi dulu apakah namanya sudah ada atau belum
+            if($('#nama_user') != ''){
+                // Menguji apakah nama sudah ada atau belum
+                username = $('#nama_user').val();
+                socket.emit('registerUser', username);
+
+            }
+            
+
+            
+        });
+        // Menerima respon dari server saat register
+        // jika server mengirimkan registerRespond maka akan dijalankan fungsi status
+        socket.on('registerRespond', function(status){
+            if(status == false){
+                alert('Nama User sudah ada, cari nama lain');
+            }else{
+                $('#chatroom').removeClass('hidden');
+                $('#homepage').addClass('hidden')
+            }
+        });
+
+
+        // ======= KETIKA USER MENGETIK =========
+        // when someone typing
+        var isTyping = false;
+        // jangan sampe saat mengetik 1 huruf muncul juga 1x is sedang mengetiknya
+
+        $('#text_box').keyup(function(){
+            if(isTyping == false){
+                socket.emit('newTyping', username + ' sedang mengetik..');
+            }
+
+            isTyping = true;
+        });
+
+        socket.on('newTyping', function(msg){
+            $('#messages').append($('<li class="temporary">').text(msg));
+        });
+        // temporary berarti akan selalu kita hapus jika user sudah memasukan messagenya.
+
     </script>
 </body>
 </html>
